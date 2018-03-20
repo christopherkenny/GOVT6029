@@ -1,0 +1,262 @@
+---
+title: "hw2_Kenny"
+author: "Christopher Kenny"
+date: "March 16, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<hr>
+#Set Up
+### Load Libraries
+```{r}
+library(tidyverse)
+```
+
+### Load Data
+```{r}
+sprinters <- read.csv('sprinters.csv')
+```
+
+
+
+
+<hr>
+#Problem 1:
+## Section 1: Matrix Form
+&middot; In R, Create a matrix X comprised of three columns: a column of ones, a column made of the variable year, and a column made up of the variable women.
+```{r}
+X <- sprinters %>% as.matrix()
+X[,2] <- X[,1]
+X[,1] <- rep.int(1,42)
+```
+
+
+&middot; Create a matrix y comprised of a single column, made up of the variable finish.
+```{r}
+y <- sprinters %>% as.matrix()
+y <- y[,2]
+```
+
+
+&middot; Compute the following using R's matrix commands (note that you will need to use the matrix multiplication operator %*%): $b = (X'X)^{-1}X'y$
+```{r}
+b <- solve(t(X)%*%X)%*%t(X)%*%y
+```
+We see b is `r b`.
+
+
+
+##Section 2: Fitting a Linear Model
+&middot; Using the function lm, run a regression of finish on year and women.
+```{r}
+m_finish <- lm(finish ~ year + women, data = sprinters)
+```
+
+
+&middot; Compare the results the calculation you did in Section 1.
+```{r}
+summary(m_finish)
+```
+
+These each give the same coefficient output, $finish \approx_\varepsilon 34.96 -0.0126*year + 1.0923*women$, which is comforting that both methods agree.  The lm method gives more information and is faster to complete.
+
+
+&middot; Make a nice plot summarizing this regression. On a single graph, plot the data and the regression line. Make sure the graph is labeled nicely, so that anyone who does not know your variable names could still read it.
+```{r}
+sprinters %>% 
+  ggplot(aes(x=year, y=finish)) +
+  geom_point() + 
+  geom_smooth(method='lm', se = F) + 
+  labs(x = 'Year', y = 'Finish Time in Seconds',
+       title = 'Olympic Sprinting Best Times, 1900-2004')
+```
+
+This shows us that the finish time is slowly decreasing over time, seemingly at a linear rate, however it could be a negative logisitic rate, which approximates well to linear over small areas of a curve.  The regression line appears to split the two groups of data points, which makes sense as we are trying to use 3 variables on 2 dimensions.  
+
+
+
+&middot; Rerun the regression, adding an interaction between women and year.
+```{r}
+m_int_finish <- lm(finish ~ year + women  + year:women, data = sprinters)
+summary(m_int_finish)
+```
+This gives the slightly more complicated expression $finish \approx_\varepsilon 31.826 - 0.011*year + 12.521*women - 0.006*(year*women)$.
+
+&middot; Redo the plot with a new fit, one for each level of women.
+```{r}
+sprinters %>% 
+  ggplot(aes(x=year, y=finish, color = as.logical(women))) +
+  geom_point() + 
+  geom_smooth(method='lm', se = F) + 
+  labs(x = 'Year', y = 'Finish Time in Seconds',
+       title = 'Olympic Sprinting Best Times, 1900-2004', 
+       color = 'Woman Sprinter')
+```
+
+Here, we see the plot, using the linear model option within ggplot's geom_smooth to automatically make two regression lines, one for men and one for women.  We see that the men are approximately one second faster across the years where both genders have data.
+
+
+
+##Section 3: Predicted Values
+&middot; Suppose that an Olympics had been held in 2001. Use the predict function to calculate the expected finishing time for men and for women.
+```{r}
+predict(m_finish, newdata = data_frame(year=2001,women=0))
+predict(m_finish, newdata = data_frame(year=2001,women=1))
+```
+The expected finish time for men is 9.729 seconds, while the expected finish time for women is 10.822 seconds.
+
+```{r}
+predict(m_int_finish, newdata = data_frame(year=2001,women=0))
+predict(m_int_finish, newdata = data_frame(year=2001,women=1))
+```
+With the interaction model, the expected finish time for men is 9.804 seconds, while the expected finish time for women is 10.686 seconds.
+
+
+&middot; Calculate 95% confidence intervals for the predictions.
+```{r}
+predict(m_finish, newdata = data_frame(year=2001,women=0), interval = 'confidence')
+predict(m_finish, newdata = data_frame(year=2001,women=1), interval = 'confidence')
+```
+The 95% confidence interval for men is 9.608 seconds to 9.851 seconds, while the 95% confidence interval for women is 10.712 seconds to 10.932 seconds.
+
+```{r}
+predict(m_int_finish, newdata = data_frame(year=2001,women=0), interval = 'confidence')
+predict(m_int_finish, newdata = data_frame(year=2001,women=1), interval = 'confidence')
+```
+For the interaction model, the 95% confidence interval for men is 9.680 seconds to 9.929 seconds, while the 95% confidence interval for women is 10.545 seconds to 10.827 seconds.
+
+&middot; The authors of the Nature article were interested in predicting the finishing times for the 2156 Olympics. Use predict to do so, for both men and women, and report 95% confidence intervals for your results.
+```{r}
+predict(m_finish, newdata = data_frame(year=2156,women=0), interval = 'confidence')
+predict(m_finish, newdata = data_frame(year=2156,women=1), interval = 'confidence')
+predict(m_int_finish, newdata = data_frame(year=2156,women=0), interval = 'confidence')
+predict(m_int_finish, newdata = data_frame(year=2156,women=1), interval = 'confidence')
+```
+
+For a man in 2156, we expect a time of 7.775 seconds, in a 95% interval of 7.358 seconds to 8.192 seconds.
+For a woman in 2156, we expect a time of 8.868 seconds, in a 95% interval of 8.477 seconds to 9.259 seconds.
+Using the interaction model, for a man in 2156, we expect a time of 8.098 seconds, in a 95% interval of 7.648 seconds to 8.549 seconds.
+Using the interaction model, for a woman in 2156, we expect a time of 8.079 seconds, in a 95% interval of 7.404 seconds to 8.753 seconds.
+
+
+&middot; Do you trust the model's predictions? Is there reason to trust the 2001 prediction more than the 2156 prediction?
+
+Generally, I do trust these model's predictions, within a reasonable limit.  We trust the predictions from 2001 better than the 2156 prediction because the model is 'trained' for the data in the region of 1900-2004. This is to say that the model is best used for addressing estimates near the data that the estimate is built from. Yet, this is not to say that the 2156 model cannot be accurate.  I do not know enough about sprinting to decide if 8.1 seconds times are physically impossible for a future human, but a 20% improvement does seem too large to trust.
+
+&middot; Is any assumption of the model being abused or overworked to make this prediction?
+Hint: Try predicting the finishing times in the year 3000 C.E.
+
+We are abusing the assumption of linearity.  But, if as aformentioned, this is closer to a logarithmic shape, then the model would not be expected to hold well so far outside of the training data.  The whole field of calculus comes from this idea of slope at a point, which can often be interpretted (for continuously differentiable functions) as linearity across small itnervals.  This allows items like linear regression to function well for small intervals, even when the real world thing being measured is not truly first degree linear. This assumption is abused though when we go outside of that interval, but it is near impossible to know where that interval truly ends without a signifantly longer period of time worth of data.
+
+
+
+
+<hr>
+#Problem 2:
+```{r}
+data("anscombe")
+anscombe2 <- anscombe %>%
+    mutate(obs = row_number()) %>%
+    gather(variable_dataset, value, - obs) %>%
+    separate(variable_dataset, c("variable", "dataset"), sep = 1L) %>%
+    spread(variable, value) %>%
+    arrange(dataset, obs)
+```
+
+&middot; For each dataset: calculate the mean and standard deviations of x and y, and correlation between x and y.
+
+First, we filter out for dataset 1 and then apply the relevant functions through dpylr's summarise function:
+```{r}
+  data1 <- anscombe2 %>% filter(dataset == 1)
+  data1 %>%  summarise(mean_x = mean(x), mean_y = mean(y), sd_x = sd(x), sd_y = sd(y), corr = cor(x=data1$x,y=data1$y))
+```
+
+Similarly for dataset 2:
+```{r}
+  data2 <- anscombe2 %>% filter(dataset == 2)
+  data2 %>%  summarise(mean_x = mean(x), mean_y = mean(y), sd_x = sd(x), sd_y = sd(y), corr = cor(x=data2$x,y=data2$y))
+```
+
+Again for dataset 3:
+```{r}
+  data3 <- anscombe2 %>% filter(dataset == 3)
+  data3 %>%  summarise(mean_x = mean(x), mean_y = mean(y), sd_x = sd(x), sd_y = sd(y), corr = cor(x=data3$x,y=data3$y))
+```
+
+Finally for dataset 4:
+```{r}
+  data4 <- anscombe2 %>% filter(dataset == 4)
+  data4 %>%  summarise(mean_x = mean(x), mean_y = mean(y), sd_x = sd(x), sd_y = sd(y), corr = cor(x=data4$x,y=data4$y))
+```
+
+&middot; Run a linear regression between x and y for each dataset.
+```{r}
+m_1 <- lm(y ~ x,data1)
+m_2 <- lm(y ~ x,data2)
+m_3 <- lm(y ~ x,data3)
+m_4 <- lm(y ~ x,data4)
+```
+Here, we make use of the filtered datasets from the previous question, to get four identical equations, though we are able to see that the residuals differ.
+
+&middot; How similar do you think that these datasets will look?
+
+Based on the chosen measures of mean, standard deviation, and correlation, we would expect that these four datasets would look relatively similar.  We know they will all be centered at $x=9$ and $y=7.5$ with a general increasing shape with a .82 correlation. Even the coefficients for the linear regressions have the same equation, $y \approx_\varepsilon 3 +0.5x$. This makes a strong case that they will all look quite similar, based on these summary statistics alone.
+
+&middot; Create a scatter plot of each dataset and its linear regression fit. Hint: you can do this easily with facet_wrap.
+```{r}
+anscombe2 %>% 
+  ggplot(aes(x = x, y = y)) +
+  geom_point() + 
+  geom_smooth(lwd = 1, se=F, method = lm) +
+  facet_wrap(~dataset)
+```
+
+
+&middot; How do we make sense of these plots?
+
+Substantively, it is very difficult to make any sense of these without more information as to what information this data is meant to capture.  However, we can see more information in these plots than in just the summary statistics.  We see that dataset 1 is generally linear and increasing, with the points loosely gathered near the regression fit. In dataset 2, we see that this data has more of a quadratic fit and is not well measured by a linear regression.  In datasets 3 and 4, we see very much the same thing: the points are gathered in a clear first degree linear arrangement, but there is one point which skews how well the linear fit is able to estimate the points.  Without the one outlier, we would be very happy with the model and we would typically look into why that is the only outlier.
+
+<hr>
+#Problem 3:
+&middot; Describe your data. Do you have it in a form that you can load it into R? What variables does it include? What are their descriptions and types?
+
+I have opted to use the vote data available through the Princeton Gerrymandering Project. This dataset covers all congressional elections for every district from 1948 through 2016.  It provides information on the number of votes towards each of the two major parties, separated by district.  The data will need to be viewed by state, as each state decides their own districting.  The data is avaliable as a medium CSV file, so it is easily loaded into R using base R.  The variables are:
+
+* State - Factor - Provides the state.
+* Year - Integer - Provides the year.
+* District - Integer - Provides the district number.
+* Republican.Votes - Integer - Provides the number of votes for the Republican candidate.
+* Democratic.Votes - Integer - Provides the number of votes for the Democratic candidate.
+* Democratic.two.party.voteshare - Numeric - Provides the proportion of votes that went to the democratic candidate. 
+* Winning.Party - Factor - Provides which major party or independent party won the election.
+
+We note that these are not the automatic types found by R, but they are the proper chocies for the given data.
+The dataset is called "Congressional Election Results, 1948 - 2016" and is available at gerrymander.princeton.edu/data.
+The dataset will require supplemental demographic information from the US Census Bureau as the paper develops to use with eiCompare.
+
+
+&middot; Describe, in as precise terms as possible, the distribution of the outcome varaible you plan to use. If you have the data in hand, a histogram would be ideal; if you do not, give a verbal description of what you expect the distribution to look like. Be sure to indicate if the data are continuous or categorical.
+
+The variable Democratic.two.party.voteshare will be one outcome variable used in this project, as it is a way to measure wasted votes, though it is imperfect as unopposed candidates skew this data.  The following is a histogram for the NY data, which will be the basis for the paper.
+
+```{r}
+princeton <- read.csv('US_House_elections_1948_to_2016.csv')
+princeton %>% 
+  filter(State == 'New York') %>% 
+  ggplot(aes(x = Democratic.two.party.voteshare)) + 
+  geom_histogram(stat = 'bin', binwidth = 0.05) + 
+  labs(x = 'Vote Share by Democratic Party')
+```
+
+This distribution represents well that NY is a more liberal state, but is also conservative in the upstate districts.  Further, we see that the vote share is relatively near 50%.  We also see two important bars, at 0 and 1, where the elected person ran unopposed with respect to the other major party.
+
+
+&middot; What challenges would your data pose for analysis by least squares regression? Be sure to discuss any potential violations of the assumptions of the GaussMarkov theorem, as well as any other complications or difficulties you see in modeling your data.
+
+In theory, the data is relatively suitable for least squares regression.  Most of the data should be able to be measured linearly.  As districts are redrawn every 10 years, any exterior influence on the data points should be small enough to be smoothed out by redistricting.  Thus, we wouldn't have to worry too much about the expected values of the error being nonzero, having a high degree of heteroskedasticity, or being correlated.  We may have some exceptions, depending on how the uncontested elections shift the data, but at this point, these elections are small in number with respect to the total number of data points.
+
+The larger problem is that OLS is unlikely to be sufficient to answer questions of gerrymandering and we may have to rely on some more specific modeling, particularly ecological inference. We could use OLS to estimate where we believe variables like efficiency gaps sit in future years, but I do not currently see these types of calculation as being of high interest.
